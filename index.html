@@ -40,6 +40,11 @@ tr:hover td{background:#f6fafb}
 .tag-client{background:#e0f2fe;color:#075985}.tag-part{background:#fef3c7;color:#92400e}
 .score{display:inline-block;min-width:34px;text-align:center;font-weight:800;font-size:14px;color:#fff;border-radius:8px;padding:3px 6px;font-variant-numeric:tabular-nums}
 .sc-hot{background:var(--hot)}.sc-warm{background:var(--warm)}.sc-ok{background:var(--ok)}.sc-low{background:var(--low)}
+.sc-cell{text-align:center;white-space:nowrap;width:46px}
+.mailbtn{display:inline-flex;align-items:center;gap:3px;margin-top:7px;font-size:10.5px;font-weight:700;line-height:1;text-decoration:none;color:#fff;background:var(--accent2);border:0;border-radius:7px;padding:4px 7px;cursor:pointer;white-space:nowrap;transition:background .15s}
+.mailbtn:hover{background:var(--accent-d)}
+.mailbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mailbtn.no-mail{background:var(--low);opacity:.85}
 .conf{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px}
 .conf-ok{background:#dcfce7;color:#166534}.conf-mid{background:#fef9c3;color:#854d0e}.conf-low{background:#f1f5f9;color:#475569}
 .prose{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:8px 30px}
@@ -3535,4 +3540,80 @@ BP 72616
 
 <p>Dossier de prospection — 27 juin 2026. Données publiques (mairies, annuaires officiels, BOAMP, Google Maps, recherche-entreprises). Mentions « À compléter » = donnée non publique à confirmer avant contact. Aucune donnée inventée.</p>
 </div></footer>
+
+<script>
+(function(){
+  // Génère, à côté de chaque score, un bouton ✉ ouvrant un email pré-écrit
+  // personnalisé pour la structure (nom extrait de la ligne + destinataire
+  // extrait du 1er email valide trouvé dans la cellule contact).
+  var EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/;
+
+  function cleanName(str){
+    return (str || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function findEmail(row){
+    // Cherche d'abord dans la cellule contact, puis dans toute la ligne.
+    var scopes = [row.querySelector('.ct'), row];
+    for (var s = 0; s < scopes.length; s++){
+      var scope = scopes[s];
+      if (!scope) continue;
+      var links = scope.querySelectorAll('a[href^="mailto:"]');
+      for (var i = 0; i < links.length; i++){
+        var href = decodeURIComponent(links[i].getAttribute('href').slice(7));
+        var m = href.match(EMAIL_RE);
+        if (m) return m[0];
+      }
+    }
+    return '';
+  }
+
+  function buildMailto(name, email){
+    var subject = 'GTB & conformité décret BACS — ' + name;
+    var body = [
+      'Bonjour,',
+      '',
+      'Je me permets de vous contacter au sujet de la mise en conformité énergétique du patrimoine bâti de ' + name + '.',
+      '',
+      'Le décret BACS (arrêté du 20 juillet 2020) impose l\'installation d\'un système de Gestion Technique du Bâtiment (GTB) sur les bâtiments tertiaires équipés d\'un système CVC supérieur à 290 kW — seuil abaissé à 70 kW au 1er janvier 2027. Couplé au décret tertiaire (Éco Énergie Tertiaire : objectif -40 % de consommation et déclaration annuelle OPERAT), c\'est aujourd\'hui le levier n°1 pour réduire durablement vos factures d\'énergie et sécuriser votre conformité réglementaire.',
+      '',
+      '[Votre entreprise], spécialisée dans l\'installation et la supervision de GTB, accompagne les collectivités et établissements de Vendée sur ces sujets. Je serais ravi de vous proposer un premier diagnostic gratuit afin d\'identifier les bâtiments concernés, de chiffrer les économies réalisables et les financements mobilisables (CEE, Fonds vert).',
+      '',
+      'Seriez-vous disponible pour un court échange dans les prochains jours ?',
+      '',
+      'Bien cordialement,',
+      '',
+      '[Votre nom]',
+      '[Votre entreprise]',
+      '[Téléphone] — [Email]'
+    ].join('\n');
+    return 'mailto:' + email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  }
+
+  var cells = document.querySelectorAll('td > span.score');
+  var built = 0;
+  for (var i = 0; i < cells.length; i++){
+    var cell = cells[i].parentElement;        // le <td> contenant le score
+    var row = cell.closest('tr');
+    if (!row) continue;
+    var strong = row.querySelector('strong');
+    var name = cleanName(strong ? strong.textContent : '');
+    if (!name) continue;
+
+    cell.classList.add('sc-cell');
+    var email = findEmail(row);
+
+    var btn = document.createElement('a');
+    btn.className = 'mailbtn' + (email ? '' : ' no-mail');
+    btn.href = buildMailto(name, email);
+    btn.textContent = '✉ Mail';
+    btn.title = email
+      ? 'Écrire à ' + email + ' (email pré-rempli)'
+      : 'Email pré-rempli (destinataire à compléter)';
+    cell.appendChild(document.createElement('br'));
+    cell.appendChild(btn);
+    built++;
+  }
+})();
+</script>
 </body></html>
